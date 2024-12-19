@@ -1,0 +1,77 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: ray-multi-tenant-policy
+spec:
+  rules:
+  - name: enforce-tenant-isolation
+    match:
+      resources:
+        kinds:
+        - RayCluster
+    validate:
+      message: "Cluster must comply with multi-tenant policies"
+      pattern:
+        spec:
+          rayVersion: "?*"  
+          headGroupSpec:
+            rayStartParams:    
+              dashboard-host: "?*"
+              block: "?*"
+            template:
+              metadata:
+                labels:
+                  tenant: "?*"
+              spec:
+                nodeSelector:
+                  tenant: "{{request.object.metadata.labels.tenant}}"
+                tolerations:
+                - key: "tenant"
+                  operator: "Equal"
+                  value: "{{request.object.metadata.labels.tenant}}"
+                containers:
+                - resources:
+                    limits:
+                      cpu: "<= {{request.object.metadata.annotations.maxCpu}}"
+                      memory: "<= {{request.object.metadata.annotations.maxMemory}}"
+                    requests:
+                      cpu: ">= {{request.object.metadata.annotations.minCpu}}"
+                      memory: ">= {{request.object.metadata.annotations.minMemory}}"
+          workerGroupSpecs:
+          - rayStartParams:    
+              block: "?*"
+  - name: generate-network-policies
+    match:
+      resources:
+        kinds:
+        - RayCluster
+    generate:
+      apiVersion: networking.k8s.io/v1  
+      kind: NetworkPolicy
+      name: "{{request.object.metadata.name}}-isolation"
+      namespace: "{{request.object.metadata.namespace}}"  
+      synchronize: true
+      data:
+        spec:
+          podSelector:
+            matchLabels:
+              ray.io/cluster: "{{request.object.metadata.name}}"
+              tenant: "{{request.object.metadata.labels.tenant}}"
+          policyTypes:
+          - Ingress
+          - Egress
+          ingress:
+          - from:
+            - podSelector:
+                matchLabels:
+                  tenant: "{{request.object.metadata.labels.tenant}}"
+          egress:
+          - to:
+            - podSelector:
+                matchLabels:
+                  tenant: "{{request.object.metadata.labels.tenant}}"
+            ports:
+            - port: 6379  
+            - port: 8265  
+            - port: 10001
+
