@@ -103,7 +103,7 @@ spec:
             requests:
               cpu: "1"
               memory: "2Gi"
-
+```
 ## 2. **Configuration That Fails enforce-tenant-isolation**
 
 ```yaml
@@ -140,7 +140,7 @@ spec:
         containers:
         - name: ray-worker
           image: rayproject/ray:2.9.0
-
+```
 ## 3. **Configuration That Fails generate-network-policies**
 ```yaml
 apiVersion: ray.io/v1
@@ -192,7 +192,7 @@ spec:
         containers:
         - name: ray-worker
           image: rayproject/ray:2.9.0
-
+```
 ## 4. **Configuration That Fails Both Policies**
 ```yaml
 apiVersion: ray.io/v1
@@ -221,4 +221,4 @@ spec:
         containers:
         - name: ray-worker
           image: rayproject/ray:2.9.0
-
+```
